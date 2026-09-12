@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -13,7 +14,6 @@ from typstbuild.model import Book  # noqa: E402
 
 book = Book(str(ROOT))
 index = BookIndex(book)
-stub = "\n".join(f"#[] <{label}>" for label in sorted(index.labels))
 probe = ROOT / "typst" / "_probe.typ"
 
 targets = sys.argv[1:] or [
@@ -32,6 +32,10 @@ for target in targets:
         line for line in body.split("\n")
         if not line.startswith('#import "../template/book.typ"')
     )
+    # The stub stands in for the labels of every *other* file: a label the
+    # target defines itself would otherwise occur twice.
+    own = set(re.findall(r"<([-a-zA-Z0-9_]+)>\s*$", body, re.M))
+    stub = "\n".join(f"#[] <{label}>" for label in sorted(index.labels - own))
     probe.write_text(
         '#import "template/book.typ": *\n#show: book.with(lang: "en")\n' + stub + "\n" + body
     )

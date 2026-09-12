@@ -104,7 +104,12 @@ class TypstEmitter:
         # Inside a function call's argument list we are in code mode, where a
         # leading `#` is not allowed.
         prefix = "" if bare else "#"
-        return f"{prefix}note[\n{body}\n]"
+        # `<aside class="bottom">` hangs up from the line it annotates instead
+        # of down from it, which is what the long notes need to stay on the
+        # page.
+        options = "bottom: true" if aside.klass == "bottom" else ""
+        paren = f"({options})" if options else ""
+        return f"{prefix}note{paren}[\n{body}\n]"
 
     def _page_title(self, blocks: list[md.Block]) -> list[str]:
         """Emits the page's own title.

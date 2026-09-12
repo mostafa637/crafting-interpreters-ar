@@ -122,6 +122,9 @@ class CodeFence:
 class Aside:
     name: str
     blocks: list["Block"]
+    #: The aside's CSS class. ``bottom`` hangs the note *up* from the line it
+    #: annotates instead of down from it, which the long notes need.
+    klass: str = ""
 
 
 @dataclass
@@ -195,9 +198,14 @@ Block = Union[
 
 _INLINE_SPECIAL = re.compile(
     r"""(`|\*\*|\*|\[|<span\s+name="|</?em>|</?code>|</?strong>|<br\s*/?>|"""
-    r"""<span\s+class="small-caps">|</span>|<a\s+href="|</a>|<cite>|</cite>|<img\b|"""
+    r"""<span\s+class="small-caps">|<span\s+class="ellipse">|<span\b[^>]*>|</span>|"""
+    r"""<a\s+href="|</a>|<cite>|</cite>|<img\b|"""
     r"""&[a-zA-Z#][a-zA-Z0-9]*;)"""
 )
+
+#: Chicago-style ellipsis: the dots get more air than a Unicode ellipsis gives
+#: them. This is what the Dart ``EllipseSyntax`` writes for the print format.
+THIN_ELLIPSIS = "\u2009.\u2009.\u2009.\u2009"
 
 _TAG_STRIP = re.compile(r"</?[a-zA-Z][^>]*>")
 
@@ -370,6 +378,13 @@ def parse_inlines(text: str) -> list[Inline]:
             inlines.append(SmallCaps(unescape_entities(value)))
             index = end + len("</span>") if end != -1 else match.end()
 
+        elif token.startswith('<span class="ellipse"'):
+            # A hand-written Chicago-style ellipsis, inside the HTML tables.
+            end = text.find("</span>", match.end())
+            flush()
+            inlines.append(Text(THIN_ELLIPSIS))
+            index = end + len("</span>") if end != -1 else match.end()
+
         elif token in ("<em>", "<code>", "<strong>") or token.startswith("<span"):
             # Inline HTML emphasis/code: treat the tag as a delimiter.
             closing = {"<em>": "</em>", "<code>": "</code>", "<strong>": "</strong>"}.get(token)
@@ -446,8 +461,20 @@ _HEADING = re.compile(r"^(#{1,3}) (.*)$")
 _FENCE = re.compile(r"^(\s*)```(.*)$")
 _CODE_DIRECTIVE = re.compile(r"^\^code ([-a-z0-9]+)( \(([^)]+)\))?$")
 _LIST_ITEM = re.compile(r"^(\s*)(\*|-|\d+\.)\s+(.*)$")
-_ASIDE_OPEN = re.compile(r'^<aside name="([^"]+)">\s*$')
+_ASIDE_OPEN = re.compile(r"^<aside\b([^>]*)>\s*$")
 _DIV = re.compile(r'^</?div(?: class="([^"]+)")?>\s*$')
+#: The duplicate of a snippet's "file, in method()" line that the web layout
+#: shows on narrow screens. The book has one layout, so it is redundant here.
+_SOURCE_FILE_NARROW = re.compile(r'^<div class="source-file-narrow">')
+
+
+def _attributes(text: str) -> dict[str, str]:
+    """The attributes of an HTML tag, whichever order they are written in."""
+    attributes: dict[str, str] = {}
+    for attribute in _ATTRIBUTE.finditer(text):
+        value = attribute.group(2) if attribute.group(2) is not None else attribute.group(3)
+        attributes[attribute.group(1)] = value
+    return attributes
 _IMAGE = re.compile(r"^<img\b([^>]*?)/?>\s*$")
 _ATTRIBUTE = re.compile(r"""([A-Za-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 
@@ -545,11 +572,18 @@ class MarkdownParser:
                 index += 1
                 continue
 
-            # <aside name="x"> ... </aside>
+            # <aside name="x"> ... </aside>, sometimes with a class.
             match = _ASIDE_OPEN.match(line)
             if match is not None:
+                attributes = _attributes(match.group(1))
                 inner, index = self._collect_until(lines, index + 1, "</aside>")
-                blocks.append(Aside(match.group(1), self.parse(inner)))
+                blocks.append(
+                    Aside(
+                        attributes.get("name", ""),
+                        self.parse(inner),
+                        attributes.get("class", ""),
+                    )
+                )
                 continue
 
             # Raw <div> markers.
@@ -558,6 +592,13 @@ class MarkdownParser:
                 blocks.append(
                     Div(match.group(1) or "", closing=line.startswith("</"))
                 )
+                index += 1
+                continue
+
+            # The narrow-screen copy of a snippet's source line.
+            if _SOURCE_FILE_NARROW.match(line):
+                while index < len(lines) and "</div>" not in lines[index]:
+                    index += 1
                 index += 1
                 continue
 
@@ -829,7 +870,10 @@ def _parse_raw_listing(raw: list[str]) -> list[Block]:
         if lines:
             file_name = strip_html_tags(unescape_entities(lines[0]))
             for line in lines[1:]:
-                # "in <em>scanToken</em>()" and friends.
+                # "in <em>scanToken</em>()" and friends. The <br> between the
+                # lines of the caption reads as a comma in the book.
+                if change:
+                    change.append(("text", ", "))
                 for part in re.split(r"(<em>.*?</em>)", line):
                     if part.startswith("<em>"):
                         change.append(("em", strip_html_tags(part)))

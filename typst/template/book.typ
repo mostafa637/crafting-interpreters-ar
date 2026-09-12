@@ -117,9 +117,17 @@
   heading(level: 1, outlined: true, bookmarked: true)[
     #if number != none [
       #block(above: 0em, below: 0.3em)[
-        #set text(size: 13pt, weight: 600, font: sans-font, fill: primary, tracking: 0.08em)
-        #context if doc-rtl.get() [الجزء ] else [Part ]
-        #number
+        #set text(size: 13pt, weight: 600, font: sans-font, fill: primary)
+        #context {
+          // The letterspacing the English label wears would break Arabic's
+          // cursive joining, so only the left-to-right edition gets it.
+          if doc-rtl.get() {
+            [الجزء #number]
+          } else {
+            set text(tracking: 0.08em)
+            [Part #number]
+          }
+        }
       ]
     ]
     #set text(size: 26pt, weight: 600, font: sans-font, fill: dark)
@@ -160,8 +168,14 @@
 
 // --- Margin notes ----------------------------------------------------------
 
-#let note(body) = context {
+#let note(bottom: false, body) = context {
   // Placed in the outer margin, next to the paragraph that mentions it.
+  //
+  // `bottom` records the Markdown's `<aside class="bottom">`. On the website
+  // that class lets the script hang the note *up* from the line it annotates
+  // (there is no room below it); here the float layout does the same job by
+  // deferring the note to the next page when the column has no room left, so
+  // every note hangs from its anchor line the same way.
   let is-rtl = doc-rtl.get()
   place(
     top + end,

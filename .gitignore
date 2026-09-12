@@ -11,3 +11,6 @@ typst/*.pdf
 typst/_*.typ
 __pycache__/
 *.pyc
+# The venv the Typst compiler lives in, and qa_doc/probe renders.
+.venv-typst/
+build/
