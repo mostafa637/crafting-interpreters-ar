@@ -136,6 +136,32 @@ class TypstEmitter:
             ]
         return [f"#chapter(title: {title}){label}", ""]
 
+    def _emit_paragraph(self, block: md.Paragraph, indent: int) -> list[str]:
+        """Emits a paragraph.
+
+        A few paragraphs in the book hold nothing but an image (the "little
+        languages" sampler, say). Those are figures, not inline pictures, so
+        they get the full page width.
+        """
+        pad = TAB * indent
+        body = [n for n in block.inlines if not isinstance(n, (md.Anchor, md.Text))]
+        if body and all(isinstance(n, md.ImageInline) for n in body):
+            lines: list[str] = []
+            for node in block.inlines:
+                if isinstance(node, md.Anchor):
+                    note = self.emit_inline(node)
+                    if note:
+                        lines.append(pad + note)
+                elif isinstance(node, md.ImageInline):
+                    width = "100%" if node.klass == "wide" else "80%"
+                    lines.append(
+                        f"{pad}#book-figure("
+                        f"{typst_string('/site/' + node.src.lstrip('/'))}, "
+                        f"width: {width}, alt: {typst_string(node.alt)})"
+                    )
+            return lines
+        return [pad + self.emit_inline_nodes(block.inlines)]
+
     # -- Blocks ------------------------------------------------------------
 
     def emit_blocks(self, blocks: list[md.Block], indent: int = 0) -> list[str]:
@@ -223,7 +249,7 @@ class TypstEmitter:
             return self._emit_heading(block, indent)
 
         if isinstance(block, md.Paragraph):
-            return [pad + self.emit_inline_nodes(block.inlines)]
+            return self._emit_paragraph(block, indent)
 
         if isinstance(block, md.SnippetBlock):
             return self._emit_snippet(block, indent)

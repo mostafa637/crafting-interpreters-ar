@@ -5,8 +5,10 @@ from __future__ import annotations
 import html
 import re
 
-#: Punctuation removed from file names and anchors.
-_PUNCTUATION = re.compile(r"""[,.?!:'"/()]""")
+#: Punctuation removed from file names and anchors. The Arabic marks have to
+#: go too: a translated heading ends in ``؟`` or ``،`` and Typst rejects those
+#: inside a label.
+_PUNCTUATION = re.compile(r"""[,.?!:'"/()\u060c\u061b\u061f\u066a\u066b\u066c\u06d4]""")
 _WHITESPACE = re.compile(r"\s+")
 
 #: Characters that are markup in Typst and must be escaped in prose.

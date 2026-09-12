@@ -321,7 +321,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     languages = ["en", "ar"] if args.lang == "both" else [args.lang]
     for lang in languages:
-        includes, stats = build_language(book, index, lang, out_dir, args.only)
+        if lang != "en":
+            # Point the pages at their translated Markdown *before* indexing,
+            # so the cross references of this edition use the anchors the
+            # translated headings produce.
+            for page in book.pages:
+                translate_page(book, page, lang, root)
+            index = BookIndex(book)
+        includes, stats = build_language(book, index, lang, out_dir, args.only)  # type: ignore[arg-type]
         main_path = emit_main(book, includes, lang, out_dir)
         print(
             f"[{lang}] wrote {len(includes)} files, "

@@ -456,13 +456,17 @@ class Header:
         self.subheader_index = subheader_index
         self.name = name
 
+    #: The names the two special headings go by, in English and in Arabic.
+    CHALLENGES_NAMES = ("Challenges", "تحديات")
+    DESIGN_NOTE_PREFIXES = ("Design Note:", "ملاحظة تصميم:")
+
     @property
     def is_challenges(self) -> bool:
-        return self.name == "Challenges" and self.level == 2
+        return self.name in self.CHALLENGES_NAMES and self.level == 2
 
     @property
     def is_design_note(self) -> bool:
-        return self.name.startswith("Design Note:")
+        return self.name.startswith(self.DESIGN_NOTE_PREFIXES)
 
     @property
     def is_special(self) -> bool:
@@ -479,7 +483,10 @@ class Header:
 
     @property
     def design_note_title(self) -> str:
-        return self.name[len("Design Note:") :].strip()
+        for prefix in self.DESIGN_NOTE_PREFIXES:
+            if self.name.startswith(prefix):
+                return self.name[len(prefix) :].strip()
+        return self.name
 
     def number_string(self, page: "Page") -> Optional[str]:
         """The ``4.1`` style number of this header."""
