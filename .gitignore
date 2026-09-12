@@ -1,18 +1,13 @@
-# Intermediate and built stuff.
-.sass-cache/
-/build/
-/gen/
-clox
-*.class
-exercises/chapter01_introduction/3/linked_list
-.idea/
-
-# I keep a scratch file at the top level to try stuff out.
-temp.lox
-
-# XCode user-specific stuff.
-xcuserdata/
-
-# Dart stuff.
-/tool/.dart_tool/
-/tool/.packages
+# Typst build outputs -------------------------------------------------------
+# The generated .typ sources and the PDFs are build products: `make typst`
+# (or `python3 -m tools.typstbuild`) writes them into typst/.
+typst/chapters/
+typst/chapters-ar/
+typst/frontmatter/
+typst/main.typ
+typst/main-ar.typ
+typst/*.pdf
+# Scratch documents used while debugging the template.
+typst/_*.typ
+__pycache__/
+*.pyc

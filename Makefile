@@ -202,5 +202,24 @@ compile_snippets:
 xml: $(TOOL_SOURCES)
 	@ dart --enable-asserts tool/bin/build_xml.dart
 
+# --- Typst editions (tools/typstbuild) --------------------------------------
+#
+# `make typst` writes the Typst sources, `make typst-pdf` also typesets them.
+# The interpreter needs the `typst` Python package:
+#
+#   python3 -m venv .venv-typst && .venv-typst/bin/pip install typst
+#
+TYPST_PYTHON ?= python3
+
+typst:
+	@ $(TYPST_PYTHON) -m tools.typstbuild --lang en
+
+typst-ar:
+	@ $(TYPST_PYTHON) -m tools.typstbuild --lang ar
+
+typst-pdf:
+	@ $(TYPST_PYTHON) -m tools.typstbuild --lang both --pdf
+
 .PHONY: book c_chapters clean clox compile_snippets debug default diffs \
-	get java_chapters jlox serve split_chapters test test_all test_c test_java
+	get java_chapters jlox serve split_chapters test test_all test_c test_java \
+	tools typst typst-ar typst-pdf
