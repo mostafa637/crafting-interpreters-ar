@@ -9,3 +9,5 @@ typst/main-ar.typ
 typst/*.pdf
 # Scratch documents used while debugging the template.
 typst/_*.typ
+__pycache__/
+*.pyc
